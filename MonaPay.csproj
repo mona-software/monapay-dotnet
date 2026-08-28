@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <PackageId>MonaPay</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>The MONA Group</Authors>
+    <Company>The MONA Group</Company>
+    <Description>Zero-dependency .NET SDK for MONA Pay</Description>
+    <PackageTags>monapay;payments;vietqr;virtual-account;webhook</PackageTags>
+    <PackageProjectUrl>https://monapay.vn</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/themonagroup/monapay-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="src/**/*.cs" />
+  </ItemGroup>
+</Project>
