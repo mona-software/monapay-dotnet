@@ -24,7 +24,11 @@ var calls = new List<MonaPayRequest>();
 var transport = new FakeTransport(request =>
 {
     calls.Add(request);
-    if (request.Url.EndsWith("/api/v1/client/login")) return Ok("{\"access_token\":\"token-" + (++logins) + "\"}");
+    if (request.Url.EndsWith("/api/v1/oauth/token"))
+    {
+        Check(request.Body != null && request.Body.Contains("\"grant_type\":\"client_credentials\"") && request.Body.Contains("\"client_id\":\"client-id\"") && request.Body.Contains("\"client_secret\":\"secret\""), "client credentials body");
+        return Ok("{\"access_token\":\"token-" + (++logins) + "\",\"expires_in\":3600}");
+    }
     if (request.Url.EndsWith("/api/v1/client-webhooks"))
     {
         Check(request.Headers["X-Client-Secret"] == "secret", "client secret header");
@@ -36,7 +40,7 @@ var transport = new FakeTransport(request =>
     Check(!request.Headers.ContainsKey("X-Client-Secret"), "GET has no secret");
     return Ok("{\"username\":\"user\"}");
 });
-using (var client = new MonaPayClient(new MonaPayOptions { Username = "user", Password = "pass", ClientSecret = "secret", BaseUrl = "https://example.test/", Transport = transport }))
+using (var client = new MonaPayClient(new MonaPayOptions { ClientId = "client-id", ClientSecret = "secret", BaseUrl = "https://example.test/", Transport = transport }))
 {
     await client.Webhooks.CreateAsync(MonaPayClient.Object("name", "Shop"));
     await client.MeAsync();

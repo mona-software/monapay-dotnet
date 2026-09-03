@@ -159,4 +159,58 @@ namespace MonaPay
             return MonaPayClient.Object("status", actual.Status, "from_date", actual.FromDate, "to_date", actual.ToDate, "page", actual.Page, "limit", actual.Limit);
         }
     }
+
+    public sealed class SandboxResource : MonaPayResource
+    {
+        internal SandboxResource(MonaPayClient client) : base(client) { }
+        public Task<object?> CreateTransactionAsync(IDictionary<string, object?> body, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/sandbox/transactions", body, null, cancellationToken);
+    }
+
+    public sealed class EmailConfigsResource : MonaPayResource
+    {
+        internal EmailConfigsResource(MonaPayClient client) : base(client) { }
+        public Task<object?> ListAsync(CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/email-configs", null, null, cancellationToken);
+        public Task<object?> CreateAsync(IDictionary<string, object?> body, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/email-configs", body, null, cancellationToken);
+        public Task<object?> GetAsync(string configId, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/email-configs/" + MonaPayClient.Segment(configId), null, null, cancellationToken);
+        public Task<object?> UpdateAsync(string configId, IDictionary<string, object?> body, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("PUT", "/api/v1/email-configs/" + MonaPayClient.Segment(configId), body, null, cancellationToken);
+        public Task<object?> RemoveAsync(string configId, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("DELETE", "/api/v1/email-configs/" + MonaPayClient.Segment(configId), null, null, cancellationToken);
+        public Task<object?> VerifyAsync(string configId, string email, string code, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/email-configs/" + MonaPayClient.Segment(configId) + "/verify", MonaPayClient.Object("email", email, "code", code), null, cancellationToken);
+        public Task<object?> ResendVerificationAsync(string configId, string email, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/email-configs/" + MonaPayClient.Segment(configId) + "/resend-verification", MonaPayClient.Object("email", email), null, cancellationToken);
+        public Task<object?> TestAsync(string configId, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/email-configs/" + MonaPayClient.Segment(configId) + "/test", MonaPayClient.Object(), null, cancellationToken);
+    }
+
+    public sealed class EmailLogOptions
+    {
+        public string? ConfigId { get; set; }
+        public string? Status { get; set; }
+        public string? EventType { get; set; }
+        public string? FromDate { get; set; }
+        public string? ToDate { get; set; }
+        public int? Page { get; set; }
+        public int? Limit { get; set; }
+    }
+
+    public sealed class EmailLogsResource : MonaPayResource
+    {
+        internal EmailLogsResource(MonaPayClient client) : base(client) { }
+        public Task<object?> ListAsync(EmailLogOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/email-logs", null, Query(options), cancellationToken);
+        public Task<object?> StatsAsync(EmailLogOptions? options = null, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/email-logs/stats", null, StatsQuery(options), cancellationToken);
+        private static Dictionary<string, object?> Query(EmailLogOptions? options)
+        {
+            EmailLogOptions actual = options ?? new EmailLogOptions();
+            return MonaPayClient.Object("config_id", actual.ConfigId, "status", actual.Status, "event_type", actual.EventType, "from_date", actual.FromDate, "to_date", actual.ToDate, "page", actual.Page, "limit", actual.Limit);
+        }
+        private static Dictionary<string, object?> StatsQuery(EmailLogOptions? options)
+        {
+            EmailLogOptions actual = options ?? new EmailLogOptions();
+            return MonaPayClient.Object("from_date", actual.FromDate, "to_date", actual.ToDate);
+        }
+    }
+
+    public sealed class EmailSuppressionsResource : MonaPayResource
+    {
+        internal EmailSuppressionsResource(MonaPayClient client) : base(client) { }
+        public Task<object?> ListAsync(CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/email-suppressions", null, null, cancellationToken);
+        public Task<object?> RemoveAsync(string email, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("DELETE", "/api/v1/email-suppressions/" + MonaPayClient.Segment(email), null, null, cancellationToken);
+    }
 }

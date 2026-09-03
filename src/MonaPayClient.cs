@@ -10,6 +10,7 @@ namespace MonaPay
 {
     public sealed class MonaPayOptions
     {
+        public string ClientId { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public string? ClientSecret { get; set; }
@@ -51,17 +52,22 @@ namespace MonaPay
 
         private readonly string username;
         private readonly string password;
+        private readonly string clientId;
         private readonly string baseUrl;
         private readonly IMonaPayTransport transport;
         private readonly IDisposable? ownedTransport;
         private readonly SemaphoreSlim authLock = new SemaphoreSlim(1, 1);
         private string? accessToken;
         private string? clientSecret;
+        private DateTimeOffset tokenExpiresAt;
 
         public MonaPayClient(MonaPayOptions options)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
-            if (string.IsNullOrWhiteSpace(options.Username) || string.IsNullOrWhiteSpace(options.Password)) throw new ArgumentException("username và password là bắt buộc");
+            bool hasClientCredentials = !string.IsNullOrWhiteSpace(options.ClientId) && !string.IsNullOrWhiteSpace(options.ClientSecret);
+            bool hasPasswordCredentials = !string.IsNullOrWhiteSpace(options.Username) && !string.IsNullOrWhiteSpace(options.Password);
+            if (!hasClientCredentials && !hasPasswordCredentials) throw new ArgumentException("Cần client ID + client secret hoặc username + password; không dùng password cho AI agent vì sẽ gãy khi bật 2FA");
+            clientId = options.ClientId;
             username = options.Username;
             password = options.Password;
             clientSecret = options.ClientSecret;
@@ -81,6 +87,22 @@ namespace MonaPay
             Transactions = new TransactionsResource(this);
             Webhooks = new WebhooksResource(this);
             WebhookLogs = new WebhookLogsResource(this);
+            Sandbox = new SandboxResource(this);
+            EmailConfigs = new EmailConfigsResource(this);
+            EmailLogs = new EmailLogsResource(this);
+            EmailSuppressions = new EmailSuppressionsResource(this);
+        }
+
+        public static MonaPayClient FromEnvironment()
+        {
+            return new MonaPayClient(new MonaPayOptions
+            {
+                ClientId = Environment.GetEnvironmentVariable("MONAPAY_CLIENT_ID") ?? string.Empty,
+                ClientSecret = Environment.GetEnvironmentVariable("MONAPAY_CLIENT_SECRET"),
+                Username = Environment.GetEnvironmentVariable("MONAPAY_USERNAME") ?? string.Empty,
+                Password = Environment.GetEnvironmentVariable("MONAPAY_PASSWORD") ?? string.Empty,
+                BaseUrl = Environment.GetEnvironmentVariable("MONAPAY_BASE_URL") ?? DefaultBaseUrl
+            });
         }
 
         public KeysResource Keys { get; }
@@ -90,6 +112,10 @@ namespace MonaPay
         public TransactionsResource Transactions { get; }
         public WebhooksResource Webhooks { get; }
         public WebhookLogsResource WebhookLogs { get; }
+        public SandboxResource Sandbox { get; }
+        public EmailConfigsResource EmailConfigs { get; }
+        public EmailLogsResource EmailLogs { get; }
+        public EmailSuppressionsResource EmailSuppressions { get; }
 
         public void SetClientSecret(string value) { clientSecret = value; }
         internal void SetGeneratedClientSecret(string value)
@@ -109,7 +135,7 @@ namespace MonaPay
             catch (MonaPayException error) when (error.StatusCode == 401)
             {
                 await authLock.WaitAsync(cancellationToken).ConfigureAwait(false);
-                try { if (accessToken == usedToken) accessToken = null; }
+                try { if (accessToken == usedToken) { accessToken = null; tokenExpiresAt = default(DateTimeOffset); } }
                 finally { authLock.Release(); }
                 await LoginAsync(cancellationToken).ConfigureAwait(false);
                 return await SendAsync(method, path, body, query, accessToken, clientSecret, cancellationToken).ConfigureAwait(false);
@@ -121,11 +147,23 @@ namespace MonaPay
             await authLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                if (!string.IsNullOrEmpty(accessToken)) return;
-                object? data = await SendAsync("POST", "/api/v1/client/login", Object("username", username, "password", password), null, null, null, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrEmpty(accessToken) && DateTimeOffset.UtcNow < tokenExpiresAt) return;
+                bool usingClientCredentials = !string.IsNullOrEmpty(clientId) && !string.IsNullOrEmpty(clientSecret);
+                string path = usingClientCredentials ? "/api/v1/oauth/token" : "/api/v1/client/login";
+                object body = usingClientCredentials
+                    ? Object("grant_type", "client_credentials", "client_id", clientId, "client_secret", clientSecret)
+                    : Object("username", username, "password", password);
+                object? data = await SendAsync("POST", path, body, null, null, null, cancellationToken).ConfigureAwait(false);
                 if (!(data is IDictionary<string, object?> map) || !(map.TryGetValue("access_token", out object? value)) || !(value is string token) || string.IsNullOrEmpty(token))
                     throw new MonaPayException("Response đăng nhập không có access_token", body: data);
                 accessToken = token;
+                double expiresIn = usingClientCredentials ? 3600 : 86400;
+                if (map.TryGetValue("expires_in", out object? rawExpires))
+                {
+                    if (rawExpires is long integer) expiresIn = integer;
+                    else if (rawExpires is double number) expiresIn = number;
+                }
+                tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(0, expiresIn - 60));
             }
             finally { authLock.Release(); }
         }

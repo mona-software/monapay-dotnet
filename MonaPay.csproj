@@ -6,7 +6,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <PackageId>MonaPay</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.3.0</Version>
     <Authors>The MONA Group</Authors>
     <Company>The MONA Group</Company>
     <Description>Zero-dependency .NET SDK for MONA Pay</Description>

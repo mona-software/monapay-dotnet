@@ -2,12 +2,30 @@
 
 SDK .NET zero-dependency cho MONA Pay, đóng gói NuGet `MonaPay`, target `netstandard2.0` và `net8.0`. Client dùng `HttpClient`, tự login/cache Bearer token và login lại đúng một lần khi HTTP 401.
 
+## Xác thực cho AI agent
+
+```bash
+export MONAPAY_CLIENT_ID="client-id"
+export MONAPAY_CLIENT_SECRET="client-secret"
+export MONAPAY_BASE_URL="https://api.monapay.vn"
+```
+
+```csharp
+using var client = MonaPayClient.FromEnvironment();
+object? profile = await client.MeAsync();
+object? qr = await client.QR.GenerateAsync(qrBody);
+object? sandbox = await client.Sandbox.CreateTransactionAsync(MonaPayClient.Object("virtual_account_number", "MONA123", "amount", 10000, "description", "AI test"));
+Console.WriteLine(profile);
+```
+
+`FromEnvironment()` ưu tiên client credentials, cache token tới gần hạn và tự lấy lại token khi gặp HTTP 401. Username/password chỉ là fallback tương thích cũ, không dùng cho AI agent vì sẽ gãy khi bật 2FA.
+
 ## Cài đặt
 
 Sau khi package được publish:
 
 ```bash
-dotnet add package MonaPay --version 0.1.0
+dotnet add package MonaPay --version 0.3.0
 ```
 
 ## Dùng nhanh
@@ -24,7 +42,7 @@ object? profile = await client.MeAsync();
 object? hooks = await client.Webhooks.ListAsync();
 ```
 
-Các resource: `Keys`, `BankAccounts`, `VA` (đăng ký + hai bước OTP), `QR`, `Transactions`, `Webhooks`, `WebhookLogs`. Body JSON dùng `IDictionary<string,object?>`; helper `MonaPayClient.Object(...)` giúp viết ngắn. POST/PUT/DELETE tự có `X-Client-Secret`.
+Các resource: `Keys`, `BankAccounts`, `VA` (đăng ký + hai bước OTP), `QR`, `Transactions`, `Webhooks`, `WebhookLogs`, `Sandbox`, `EmailConfigs`, `EmailLogs`, `EmailSuppressions`. Body JSON dùng `IDictionary<string,object?>`; helper `MonaPayClient.Object(...)` giúp viết ngắn. POST/PUT/DELETE tự có `X-Client-Secret`.
 
 ```csharp
 TransactionIterator iterator = client.Transactions.Iterate(
