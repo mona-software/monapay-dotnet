@@ -22,6 +22,13 @@ namespace MonaPay
         }
         public Task<object?> ListAsync(CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/client-keys/list", null, null, cancellationToken);
         public Task<object?> DestroyAsync(string keyId, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("DELETE", "/api/v1/client-keys/destroy/" + MonaPayClient.Segment(keyId), null, null, cancellationToken);
+        public Task<object?> RevealAsync(string keyId, IDictionary<string, object?> confirmation, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/client-keys/" + MonaPayClient.Segment(keyId) + "/reveal", confirmation, null, cancellationToken);
+        public async Task<object?> RotateAsync(string keyId, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            object? data = await Client.RequestAsync("POST", "/api/v1/client-keys/" + MonaPayClient.Segment(keyId) + "/rotate", MonaPayClient.Object(), null, cancellationToken).ConfigureAwait(false);
+            if (data is IDictionary<string, object?> map && map.TryGetValue("client_secret", out object? value) && value is string secret && !string.IsNullOrEmpty(secret)) Client.SetClientSecret(secret);
+            return data;
+        }
     }
 
     public sealed class VirtualAccountsResource : MonaPayResource
@@ -38,6 +45,44 @@ namespace MonaPay
     {
         internal BankAccountsResource(MonaPayClient client) : base(client) { }
         public Task<object?> ListAsync(CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/client/bank-accounts", null, null, cancellationToken);
+    }
+
+    public sealed class PaymentProfileResource : MonaPayResource
+    {
+        internal PaymentProfileResource(MonaPayClient client) : base(client) { }
+        public Task<object?> GetAsync(CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/payment-profile", null, null, cancellationToken);
+        public Task<object?> SetAsync(IDictionary<string, object?> body, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("PUT", "/api/v1/payment-profile", body, null, cancellationToken);
+        public Task<object?> RotateReturnSecretAsync(CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/payment-profile/rotate-return-secret", MonaPayClient.Object(), null, cancellationToken);
+        public Task<object?> RevealReturnSecretAsync(IDictionary<string, object?> confirmation, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("POST", "/api/v1/payment-profile/reveal-return-secret", confirmation, null, cancellationToken);
+    }
+
+    public sealed class CheckoutOptions
+    {
+        public string? Status { get; set; }
+        public string? OrderCode { get; set; }
+        public string? FromDate { get; set; }
+        public string? ToDate { get; set; }
+        public int? Page { get; set; }
+        public int? Limit { get; set; }
+    }
+
+    public sealed class CheckoutsResource : MonaPayResource
+    {
+        internal CheckoutsResource(MonaPayClient client) : base(client) { }
+        public Task<object?> CreateAsync(IDictionary<string, object?> body, string? idempotencyKey = null, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync(
+            "POST", "/api/v1/checkouts", body, null, cancellationToken,
+            new Dictionary<string, string> { ["Idempotency-Key"] = string.IsNullOrEmpty(idempotencyKey) ? Guid.NewGuid().ToString() : idempotencyKey! });
+        public Task<object?> GetAsync(string checkoutId, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync("GET", "/api/v1/checkouts/" + MonaPayClient.Segment(checkoutId), null, null, cancellationToken);
+        public Task<object?> ListAsync(CheckoutOptions? options = null, CancellationToken cancellationToken = default(CancellationToken))
+        {
+            CheckoutOptions actual = options ?? new CheckoutOptions();
+            return Client.RequestAsync("GET", "/api/v1/checkouts", null, MonaPayClient.Object(
+                "status", actual.Status, "order_code", actual.OrderCode, "from_date", actual.FromDate,
+                "to_date", actual.ToDate, "page", actual.Page, "limit", actual.Limit), cancellationToken);
+        }
+        public Task<object?> CancelAsync(string checkoutId, string? idempotencyKey = null, CancellationToken cancellationToken = default(CancellationToken)) => Client.RequestAsync(
+            "POST", "/api/v1/checkouts/" + MonaPayClient.Segment(checkoutId) + "/cancel", MonaPayClient.Object(), null, cancellationToken,
+            new Dictionary<string, string> { ["Idempotency-Key"] = string.IsNullOrEmpty(idempotencyKey) ? Guid.NewGuid().ToString() : idempotencyKey! });
     }
 
     public sealed class QRResource : MonaPayResource

@@ -25,7 +25,7 @@ Console.WriteLine(profile);
 Sau khi package được publish:
 
 ```bash
-dotnet add package MonaPay --version 0.3.0
+dotnet add package MonaPay --version 0.4.0
 ```
 
 ## Dùng nhanh
@@ -42,7 +42,19 @@ object? profile = await client.MeAsync();
 object? hooks = await client.Webhooks.ListAsync();
 ```
 
-Các resource: `Keys`, `BankAccounts`, `VA` (đăng ký + hai bước OTP), `QR`, `Transactions`, `Webhooks`, `WebhookLogs`, `Sandbox`, `EmailConfigs`, `EmailLogs`, `EmailSuppressions`. Body JSON dùng `IDictionary<string,object?>`; helper `MonaPayClient.Object(...)` giúp viết ngắn. POST/PUT/DELETE tự có `X-Client-Secret`.
+Các resource: `Keys`, `PaymentProfile`, `Checkouts`, `BankAccounts`, `VA` (đăng ký + hai bước OTP), `QR`, `Transactions`, `Webhooks`, `WebhookLogs`, `Sandbox`, `EmailConfigs`, `EmailLogs`, `EmailSuppressions`. Body JSON dùng `IDictionary<string,object?>`; helper `MonaPayClient.Object(...)` giúp viết ngắn. POST/PUT/DELETE tự có `X-Client-Secret`.
+
+## Trang thanh toán (hosted checkout)
+
+```csharp
+object? checkout = await client.Checkouts.CreateAsync(MonaPayClient.Object("amount", 250000, "order_code", "DH10234", "return_url", "https://shop.vn/payment/return"));
+string url = (string)((IDictionary<string, object?>)checkout!)["checkout_url"]!;
+return Results.Redirect(url);
+if (eventType == "CHECKOUT_PAID")
+    await FulfillOnce(eventData["order_code"]);
+```
+
+SDK tự sinh `Idempotency-Key` cho `CreateAsync` và `CancelAsync`; truyền đối số key khi anh chị cần dùng key riêng. Nguồn sự thật để giao hàng là webhook `CHECKOUT_PAID` hoặc kết quả `GetAsync`, không phải redirect trình duyệt.
 
 ```csharp
 TransactionIterator iterator = client.Transactions.Iterate(

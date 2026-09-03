@@ -83,6 +83,8 @@ namespace MonaPay
             Keys = new KeysResource(this);
             VA = new VirtualAccountsResource(this);
             BankAccounts = new BankAccountsResource(this);
+            PaymentProfile = new PaymentProfileResource(this);
+            Checkouts = new CheckoutsResource(this);
             QR = new QRResource(this);
             Transactions = new TransactionsResource(this);
             Webhooks = new WebhooksResource(this);
@@ -108,6 +110,8 @@ namespace MonaPay
         public KeysResource Keys { get; }
         public VirtualAccountsResource VA { get; }
         public BankAccountsResource BankAccounts { get; }
+        public PaymentProfileResource PaymentProfile { get; }
+        public CheckoutsResource Checkouts { get; }
         public QRResource QR { get; }
         public TransactionsResource Transactions { get; }
         public WebhooksResource Webhooks { get; }
@@ -124,13 +128,13 @@ namespace MonaPay
         }
         public Task<object?> MeAsync(CancellationToken cancellationToken = default(CancellationToken)) => RequestAsync("GET", "/api/v1/client/me", null, null, cancellationToken);
 
-        internal async Task<object?> RequestAsync(string method, string path, object? body, IDictionary<string, object?>? query, CancellationToken cancellationToken)
+        internal async Task<object?> RequestAsync(string method, string path, object? body, IDictionary<string, object?>? query, CancellationToken cancellationToken, IDictionary<string, string>? customHeaders = null)
         {
             await LoginAsync(cancellationToken).ConfigureAwait(false);
             string usedToken = accessToken!;
             try
             {
-                return await SendAsync(method, path, body, query, usedToken, clientSecret, cancellationToken).ConfigureAwait(false);
+                return await SendAsync(method, path, body, query, usedToken, clientSecret, cancellationToken, customHeaders).ConfigureAwait(false);
             }
             catch (MonaPayException error) when (error.StatusCode == 401)
             {
@@ -138,7 +142,7 @@ namespace MonaPay
                 try { if (accessToken == usedToken) { accessToken = null; tokenExpiresAt = default(DateTimeOffset); } }
                 finally { authLock.Release(); }
                 await LoginAsync(cancellationToken).ConfigureAwait(false);
-                return await SendAsync(method, path, body, query, accessToken, clientSecret, cancellationToken).ConfigureAwait(false);
+                return await SendAsync(method, path, body, query, accessToken, clientSecret, cancellationToken, customHeaders).ConfigureAwait(false);
             }
         }
 
@@ -168,11 +172,13 @@ namespace MonaPay
             finally { authLock.Release(); }
         }
 
-        private async Task<object?> SendAsync(string method, string path, object? body, IDictionary<string, object?>? query, string? token, string? secret, CancellationToken cancellationToken)
+        private async Task<object?> SendAsync(string method, string path, object? body, IDictionary<string, object?>? query, string? token, string? secret, CancellationToken cancellationToken, IDictionary<string, string>? customHeaders = null)
         {
             var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) { ["Accept"] = "application/json" };
             if (!string.IsNullOrEmpty(token)) headers["Authorization"] = "Bearer " + token;
             if (!string.IsNullOrEmpty(token) && method != "GET" && !string.IsNullOrEmpty(secret)) headers["X-Client-Secret"] = secret!;
+            if (customHeaders != null)
+                foreach (KeyValuePair<string, string> header in customHeaders) headers[header.Key] = header.Value;
             string? encodedBody = null;
             if (body != null)
             {

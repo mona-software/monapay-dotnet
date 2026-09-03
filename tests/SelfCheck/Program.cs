@@ -34,6 +34,12 @@ var transport = new FakeTransport(request =>
         Check(request.Headers["X-Client-Secret"] == "secret", "client secret header");
         return Ok("{\"id\":\"hook-1\"}");
     }
+    if (request.Url.EndsWith("/api/v1/checkouts"))
+    {
+        Check(request.Headers["Idempotency-Key"] == "checkout-key", "checkout idempotency header");
+        Check(request.Headers["X-Client-Secret"] == "secret", "checkout client secret header");
+        return Ok("{\"checkout_url\":\"https://pay.monapay.vn/c/token\"}");
+    }
     meCalls++;
     if (meCalls == 1) return new MonaPayResponse(401, "{\"detail\":\"expired\"}");
     Check(request.Headers["Authorization"] == "Bearer token-2", "refreshed bearer");
@@ -44,8 +50,9 @@ using (var client = new MonaPayClient(new MonaPayOptions { ClientId = "client-id
 {
     await client.Webhooks.CreateAsync(MonaPayClient.Object("name", "Shop"));
     await client.MeAsync();
+    await client.Checkouts.CreateAsync(MonaPayClient.Object("amount", 250000), "checkout-key");
 }
-Check(logins == 2 && calls.Count == 5, "one refresh after 401");
+Check(logins == 2 && calls.Count == 6, "one refresh after 401");
 
 int pageCalls = 0;
 var pageTransport = new FakeTransport(request =>
