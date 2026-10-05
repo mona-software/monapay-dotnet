@@ -12,7 +12,7 @@
     <Description>Zero-dependency .NET SDK for MONA Pay</Description>
     <PackageTags>monapay;payments;vietqr;virtual-account;webhook</PackageTags>
     <PackageProjectUrl>https://monapay.vn</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/themonagroup/monapay-dotnet</RepositoryUrl>
+    <RepositoryUrl>https://github.com/mona-software/monapay-dotnet</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>

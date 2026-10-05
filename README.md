@@ -94,3 +94,7 @@ Docs: https://monapay.vn/docs · Hotline 1900 636 648 · info@themona.global. MO
 Zero-dependency .NET SDK targeting `netstandard2.0` and `net8.0`. It covers token caching and one 401 refresh, virtual accounts and both OTP steps, VietQR, client-side `SinceId` iteration, webhook configuration/logs/retry, and constant-time HMAC verification. An ASP.NET Core minimal API example and an offline console self-check are included.
 
 MIT © The MONA Group.
+
+**MONA Pay is part of MONA Cloud by The MONA Group.**
+
+**MONA Pay thuộc bộ MONA Cloud của The MONA Group.**
